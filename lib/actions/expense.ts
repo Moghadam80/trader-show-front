@@ -13,9 +13,14 @@ export const initialExpenseActionState: ExpenseActionState = {
   message: "",
 };
 
+type ExpenseActionOptions = {
+  onSuccess?: () => Promise<void> | void;
+};
+
 export async function createExpenseAction(
   _prevState: ExpenseActionState,
   values: ExpenseFormValues,
+  options?: ExpenseActionOptions,
 ): Promise<ExpenseActionState> {
   try {
     await api.createExpense({
@@ -24,6 +29,7 @@ export async function createExpenseAction(
       amount: Number(values.amount),
       description: values.description.trim(),
     });
+    await options?.onSuccess?.();
 
     return {
       success: true,
@@ -35,9 +41,7 @@ export async function createExpenseAction(
       success: false,
       error: true,
       message:
-        error instanceof Error
-          ? error.message
-          : "Unable to save the expense.",
+        error instanceof Error ? error.message : "Unable to save the expense.",
     };
   }
 }

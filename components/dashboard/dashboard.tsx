@@ -4,6 +4,7 @@ import { BalancesSection } from "@/components/dashboard/balances-section";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { ExpensesSection } from "@/components/dashboard/expenses-section";
+import { RequestBoundary } from "@/components/shared/request-boundary";
 
 export function Dashboard() {
   return (
@@ -11,24 +12,32 @@ export function Dashboard() {
       <div className="absolute inset-x-0 top-0 -z-10 h-[460px] bg-[radial-gradient(circle_at_10%_0%,#dff3e8_0,transparent_37%),radial-gradient(circle_at_90%_0%,#f9d9c7_0,transparent_35%)]" />
 
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-        <Suspense fallback={<DashboardSkeleton />}>
-          <DashboardHeader />
-        </Suspense>
+        <RequestBoundary title="Couldn’t load group members">
+          <Suspense fallback={<DashboardSkeleton />}>
+            <DashboardHeader />
+          </Suspense>
+        </RequestBoundary>
 
         <div className="mt-8 sm:hidden">
-          <Suspense fallback={null}>
-            <AddExpenseDialog />
-          </Suspense>
+          <RequestBoundary title="Couldn’t load the expense form">
+            <Suspense fallback={null}>
+              <AddExpenseDialog />
+            </Suspense>
+          </RequestBoundary>
         </div>
 
         <div className="mt-14 grid gap-5 md:grid-cols-[1.35fr_1fr]">
-          <Suspense fallback={<DashboardSkeleton />}>
-            <ExpensesSection />
-          </Suspense>
+          <RequestBoundary title="Couldn’t load expenses">
+            <Suspense fallback={<DashboardSkeleton />}>
+              <ExpensesSection />
+            </Suspense>
+          </RequestBoundary>
 
-          <Suspense fallback={<DashboardSkeleton />}>
-            <BalancesSection />
-          </Suspense>
+          <RequestBoundary title="Couldn’t load balances">
+            <Suspense fallback={<DashboardSkeleton />}>
+              <BalancesSection />
+            </Suspense>
+          </RequestBoundary>
         </div>
 
         <footer className="mt-8 flex items-center justify-between border-t pt-5 text-xs text-ink/40">

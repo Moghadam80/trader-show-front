@@ -1,16 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  startTransition,
-  useActionState,
-  useEffect,
-  useState,
-} from "react";
-import {
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
+import { startTransition, useActionState, useCallback, useState } from "react";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -67,11 +59,6 @@ export function AddExpenseDialog() {
 
   const [open, setOpen] = useState(false);
 
-  const [state, action, pending] = useActionState(
-    createExpenseAction,
-    initialState,
-  );
-
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
@@ -82,24 +69,29 @@ export function AddExpenseDialog() {
     },
   });
 
-  useEffect(() => {
-    if (state.success) {
-      queryClient.invalidateQueries({
-        queryKey: ["expenses"],
-      });
+  const handleSuccess = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: ["expenses"],
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["balances"],
+    });
+    form.reset();
+    setOpen(false);
+  }, [form, queryClient]);
 
-      queryClient.invalidateQueries({
-        queryKey: ["balances"],
-      });
-
-      form.reset();
-      setOpen(false);
-    }
-  }, [state.success]);
+  const action = useCallback(
+    (previousState: ExpenseActionState, values: ExpenseFormValues) =>
+      createExpenseAction(previousState, values, {
+        onSuccess: handleSuccess,
+      }),
+    [handleSuccess],
+  );
+  const [state, dispatch, pending] = useActionState(action, initialState);
 
   function handleSubmit(values: ExpenseFormValues) {
     startTransition(() => {
-      action(values);
+      dispatch(values);
     });
   }
 
@@ -115,8 +107,8 @@ export function AddExpenseDialog() {
           <DialogTitle>Record an expense</DialogTitle>
 
           <DialogDescription>
-            Add a directional transaction. The person listed under
-            “Expense for” owes the payer.
+            Add a directional transaction. The person listed under “Expense for”
+            owes the payer.
           </DialogDescription>
         </DialogHeader>
 
@@ -132,10 +124,7 @@ export function AddExpenseDialog() {
                 <FormItem>
                   <FormLabel>Paid by</FormLabel>
 
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Choose a person" />
@@ -144,10 +133,7 @@ export function AddExpenseDialog() {
 
                     <SelectContent>
                       {users.map((user) => (
-                        <SelectItem
-                          key={user.id}
-                          value={user.id}
-                        >
+                        <SelectItem key={user.id} value={user.id}>
                           {user.name}
                         </SelectItem>
                       ))}
@@ -166,10 +152,7 @@ export function AddExpenseDialog() {
                 <FormItem>
                   <FormLabel>Expense for</FormLabel>
 
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Choose a person" />
@@ -178,10 +161,7 @@ export function AddExpenseDialog() {
 
                     <SelectContent>
                       {users.map((user) => (
-                        <SelectItem
-                          key={user.id}
-                          value={user.id}
-                        >
+                        <SelectItem key={user.id} value={user.id}>
                           {user.name}
                         </SelectItem>
                       ))}
@@ -243,16 +223,10 @@ export function AddExpenseDialog() {
             />
 
             {state.error && (
-              <p className="text-sm text-red-600">
-                {state.message}
-              </p>
+              <p className="text-sm text-red-600">{state.message}</p>
             )}
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={pending}
-            >
+            <Button type="submit" className="w-full" disabled={pending}>
               {pending ? "Saving…" : "Save expense"}
             </Button>
           </form>

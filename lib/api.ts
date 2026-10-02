@@ -2,16 +2,47 @@ import type { Balance, Expense, User } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...options?.headers },
-  });
-  if (!response.ok) {
-    const message = await response.json().catch(() => null);
-    throw new Error(message?.message ?? "Something went wrong");
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly details?: unknown,
+  ) {
+    super(message);
+    this.name = "ApiError";
   }
-  return response.json();
+}
+
+function getErrorMessage(payload: unknown, fallback: string) {
+  if (!payload || typeof payload !== "object") return fallback;
+  const message = (payload as { message?: unknown }).message;
+  if (Array.isArray(message)) return message.join(" ");
+  return typeof message === "string" ? message : fallback;
+}
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  try {
+    const response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: { "Content-Type": "application/json", ...options?.headers },
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new ApiError(
+        getErrorMessage(payload, "The request could not be completed."),
+        response.status,
+        payload,
+      );
+    }
+    return response.json();
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(
+      "Unable to connect to the backend. Please check that the API is running.",
+      0,
+      error,
+    );
+  }
 }
 
 export const api = {
