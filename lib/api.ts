@@ -1,6 +1,9 @@
 import type { Balance, Expense, User } from "@/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const API_URL =
+  typeof window === "undefined"
+    ? (process.env.BACKEND_API_URL ?? "http://localhost:4000")
+    : "/api/backend";
 
 export class ApiError extends Error {
   constructor(
